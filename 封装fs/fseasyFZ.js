@@ -1,0 +1,65 @@
+var fs=require('fs')
+var fsDemo={
+	//读取文件
+	readFile:function(url,fn){
+		fs.readFile(url,'utf-8',function(err,data){
+			fn(err,data)
+		})
+	},
+	
+	//写入文件
+	wirteFile:function(url,text,fn){
+		fs.writeFile(url,text,function(err,data){
+			fn(err,data)
+		})
+	},
+	
+	//复制文件
+	copyFile:function(url1,url2,fn){
+		fs.readFile(url1,'utf-8',function(err,data){
+			fs.writeFile(url2,data,function(err,data){
+				fn(err,data)
+			})
+		})
+	},
+	
+	//删除文件
+	deleteFile:function(url,fn){
+		fs.unlink(url,function(err){
+			fn(err)
+		})
+	},
+	//修改文件名字
+	rename:function(url,newname,fn){
+		fs.rename(url,newname,function(err){
+			fn(err)
+		})
+	},
+	//判断是否存在及文件类型
+	existFile:function(url){
+		fs.exists(url,function(exists){
+			if(exists){
+				//文件存在
+				fs.stat(url,function(err,stats){
+					if(stats.isDirectory()){
+						//是文件夹
+						console.log('这是文件夹')
+					}else{
+						//是文件
+						console.log('这是文件')
+					}
+				})
+			}else{
+				//文件不存在
+				console.log('文件不存在')
+			}
+		})
+	},
+	//在文件末尾添加内容
+	appendFile:function(url,text,fn){
+		fs.appendFile(url,text,'utf-8',function(err){
+			fn(err)
+		})
+	}
+}
+module.exports=fsDemo
