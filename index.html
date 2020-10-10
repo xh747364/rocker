@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<meta http-equiv="Cache-Control" content="no-siteapp" />
+		<meta http-equiv="Expires" content="0">
+		<meta http-equiv="Pragma" content="no-cache">
+		<meta http-equiv="Cache-control" content="no-cache">
+		<meta http-equiv="Cache" content="no-cache">
+		<title>移动端摇杆实现</title>
+		<style type="text/css">
+			body {
+				overflow: hidden;
+			}
+
+			* {
+				margin: 0;
+				padding: 0;
+			}
+
+			canvas {
+				border: 1px solid #000000;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas id="canvas" width="600" height="320"></canvas>
+	</body>
+
+</html>
+<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+<script type="text/javascript">
+	let canvas = $('#canvas');
+	let ctx = canvas[0].getContext('2d');
+	let w = canvas.width(); //获取 canvas 宽度
+	let h = canvas.height();//获取 canvas 高度
+	let cX, cY, btnClientX, btnClientY;
+	const R1 = 50; //摇杆范围
+	const r1 = 14; //摇杆黑球
+	let fn = {
+		
+		cleanCanvas() { //清除画布
+			ctx.fillStyle = "#FFFFFF"
+			ctx.fillRect(0, 0, w, h)
+		},
+
+		GetPoint(cx, cy, r, stx, sty, edx, edy) { //计算圆于直线的交点
+			//(x-cx)^2+(y-cy)^2=r^2
+			//y=k*x+b
+			var k = (edy - sty) / (edx - stx);
+			var b = edy - k * edx;
+			//(1 + k^2)*x^2 - x*(2*cx -2*k*(b -cy) ) + cx*cx + ( b - cy)*(b - cy) - r*r = 0
+			var x1, y1, x2, y2;
+			var c = cx * cx + (b - cy) * (b - cy) - r * r;
+			var a = (1 + k * k);
+			var b1 = (2 * cx - 2 * k * (b - cy));
+		
+			var tmp = Math.sqrt(b1 * b1 - 4 * a * c);
+		
+			x1 = (b1 + tmp) / (2 * a);
+			y1 = k * x1 + b;
+		
+			x2 = (b1 - tmp) / (2 * a);
+			y2 = k * x2 + b;
+			return [x1, y1, x2, y2];
+		},
+		
+		drawTouchBtn(obj) {
+			let x, y;
+			x = obj ? cX + obj.jx : btnClientX + 14 > w / 2 ? w / 2 - 14 : btnClientX - 14 < 0 ? 14 : btnClientX;
+			y = obj ? cY + obj.jy : btnClientY - 14 < 0 ? 14 : btnClientY + 14 > h ? h - 14 : btnClientY;
+			
+			this.cleanCanvas();
+			ctx.save();
+			ctx.beginPath();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = 'red';
+			ctx.arc(cX, cY, 50, 0, Math.PI * 2, false);
+			ctx.stroke();
+			ctx.closePath();
+			ctx.fillStyle = '#FFFFFF';
+			ctx.fill();
+			ctx.restore();
+			
+			ctx.save();
+			ctx.beginPath();
+			ctx.lineWidth = 2;
+			ctx.strokeStyle = '#000000';
+			ctx.arc(x, y, 14, 0, Math.PI * 2, false);
+			ctx.closePath();
+			ctx.restore();
+			ctx.fillStyle = '#000000';
+			ctx.fill();
+			ctx.restore();
+		}
+	}
+	
+	canvas.on('touchend', function(e) {
+		fn.cleanCanvas();
+	})
+	
+	canvas.on('touchmove', function(e) {
+		btnClientX = e.touches[0].clientX;
+		btnClientY = e.touches[0].clientY;
+
+		let a = btnClientX + 50 > w / 2 ? w / 2 - 50 : btnClientX - 50 < 0 ? 50 : btnClientX;
+		let b = btnClientY - 50 < 0 ? 50 : btnClientY + 50 > h ? h - 50 : btnClientY;
+		const event = e;
+		const effectiveFinger = 0; //有效手指
+		let centerX = cX;
+		let centerY = cY;
+		let jx,jy;
+		//摇杆在范围内
+		if (Math.sqrt(Math.pow(event.touches[effectiveFinger].clientX - centerX, 2) +
+				Math.pow(event.touches[effectiveFinger].clientY - centerY, 2)) <= Math.abs(R1 - r1)) {  //josize / 2 - jisize / 2
+			jx = event.touches[effectiveFinger].clientX - centerX;
+			jy = event.touches[effectiveFinger].clientY - centerY;
+		} else
+		//否则计算摇杆最接近的位置
+		{
+			var x = event.touches[effectiveFinger].clientX,
+				y = event.touches[effectiveFinger].clientY,
+				r = R1;
+			var ans = fn.GetPoint(centerX, centerY, r, centerX, centerY, x, y);
+			//圆与直线有两个交点，计算出离手指最近的交点
+			if (Math.sqrt((ans[0] - x) * (ans[0] - x) + (ans[1] - y) * (ans[1] - y)) < Math.sqrt((ans[2] - x) * (ans[2] - x) +
+					(ans[3] - y) * (ans[3] - y))) {
+				jx = ans[0] - centerX;
+				jy = ans[1] - centerY;
+			} else {
+				jx = ans[2] - centerX;
+				jy = ans[3] - centerY;
+			}
+		}
+		
+		fn.drawTouchBtn({jx: jx, jy: jy});
+	})
+	
+	canvas.on('touchstart', function(e) {
+		fn.cleanCanvas();
+		btnClientX = e.touches[0].clientX;
+		btnClientY = e.touches[0].clientY;
+
+		cX = btnClientX + 50 > w / 2 ? w / 2 - 50 : btnClientX - 50 < 0 ? 50 : btnClientX;
+		cY = btnClientY - 50 < 0 ? 50 : btnClientY + 50 > h ? h - 50 : btnClientY;
+		console.log(cX, cY)
+		const r = 50 - 14
+		ctx.save();
+		ctx.beginPath();
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = 'red';
+		ctx.arc(cX, cY, r, 0, Math.PI * 2, false);
+		ctx.stroke();
+		ctx.closePath();
+		ctx.restore();
+
+		ctx.save();
+		ctx.beginPath();
+		ctx.lineWidth = 2;
+		ctx.strokeStyle = 'red';
+		ctx.arc(cX, cY, 50, 0, Math.PI * 2, false);
+		ctx.stroke();
+		ctx.closePath();
+		ctx.restore();
+
+		fn.drawTouchBtn();
+	})
+	
+</script>
